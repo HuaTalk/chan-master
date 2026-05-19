@@ -7,6 +7,7 @@ Run with real API credentials from .env.
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -23,6 +24,49 @@ from models import (
     SessionState,
 )
 from cli import _select_topic
+
+
+def _resolve_env_file() -> Path:
+    """Resolve the env file path used for real-LLM smoke testing.
+
+    Priority:
+      1) SMOKE_ENV_FILE (explicit override)
+      2) ./.env (project local)
+      3) ../.env (monorepo parent)
+    """
+    explicit = os.getenv("SMOKE_ENV_FILE", "").strip()
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+
+    root = Path(__file__).resolve().parent
+    local = root / ".env"
+    if local.exists():
+        return local
+
+    parent = root.parent / ".env"
+    if parent.exists():
+        return parent
+
+    return local
+
+
+def _load_smoke_env() -> tuple[bool, str]:
+    """Load env and validate at least one API key for real LLM smoke tests."""
+    env_path = _resolve_env_file()
+    if not env_path.exists():
+        return False, (
+            "Missing .env for real-LLM smoke test. "
+            "Create ./ .env (or set SMOKE_ENV_FILE) with DEEPSEEK_API_KEY/OPENAI_API_KEY."
+        )
+
+    load_dotenv(dotenv_path=env_path)
+    if os.getenv("DEEPSEEK_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip():
+        return True, f"Loaded env: {env_path}"
+
+    return False, (
+        f"Loaded env but no API key found: {env_path}. "
+        "Set DEEPSEEK_API_KEY or OPENAI_API_KEY."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +215,13 @@ async def main():
     print("=" * 56)
     print()
 
+    ok_env, env_msg = _load_smoke_env()
+    if not ok_env:
+        print(f"  ⚠ {env_msg}")
+        print("  Skip real-LLM smoke tests.")
+        return
+    print(f"  ✅ {env_msg}")
+
     test_topic_selection()
     await test_model_init()
     await test_session_persistence()
@@ -189,4 +240,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
