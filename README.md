@@ -1,4 +1,4 @@
-# Practice Test Agent
+# chan-master
 
 **AI-powered Socratic tutoring** — in the style of *The Little Schemer*.
 
@@ -18,7 +18,7 @@ This tutor follows the same approach:
 ## Quick start
 
 ```bash
-cd practice_test_agent
+cd chan-master
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # set DEEPSEEK_API_KEY or OPENAI_API_KEY
@@ -42,7 +42,7 @@ python main.py
 ### Interactive session
 
 ```bash
-python __main__.py       # from inside practice_test_agent/
+python __main__.py       # from inside chan-master/
 ```
 
 CLI 会在进入练习前自动探测一次 LLM 可用性；若 API Key / base URL / model 配置有误，会直接提示并退出。
@@ -117,7 +117,7 @@ pure-Python fallback with the same interface kicks in.
 ## Project structure
 
 ```
-practice_test_agent/
+chan-master/
 ├── __init__.py          # Package exports
 ├── __main__.py          # python -m entry
 ├── cli.py               # CLI: topic selection, main loop

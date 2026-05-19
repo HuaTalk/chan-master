@@ -41,7 +41,7 @@ def _p(text: str, *styles: str) -> str:
 def _print_banner() -> None:
     print()
     print(_p("  ╔══════════════════════════════════════════╗", "cyan"))
-    print(_p("  ║     Practice Test Agent                  ║", "cyan"))
+    print(_p("  ║     Chan Master                          ║", "cyan"))
     print(_p("  ║     Socratic tutor · The Little Schemer  ║", "cyan"))
     print(_p("  ╚══════════════════════════════════════════╝", "cyan"))
     print()
@@ -230,7 +230,8 @@ async def _run_session(topic: str, resume_session_id: str | None = None) -> None
                 chosen = [k.strip().upper() for k in raw.replace(",", " ").split() if k.strip()]
                 if chosen and all(k in valid_keys for k in chosen):
                     break
-                print(f"  {_p(f'Please pick from: {", ".join(sorted(valid_keys))}', 'yellow')}")
+                valid_text = ", ".join(sorted(valid_keys))
+                print(f"  {_p(f'Please pick from: {valid_text}', 'yellow')}")
 
             turn = await tutor.answer(chosen)
 
@@ -247,7 +248,7 @@ async def _run_session(topic: str, resume_session_id: str | None = None) -> None
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Practice Test Agent — Socratic tutor in the style of The Little Schemer",
+        description="Chan Master — Socratic tutor in the style of The Little Schemer",
     )
     parser.add_argument(
         "--topic", "-t",
