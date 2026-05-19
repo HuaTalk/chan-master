@@ -15,14 +15,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-from practice_test_agent.tutor import SocraticTutor, _mastery_level, _default_model
-from practice_test_agent.memory import SessionStore
-from practice_test_agent.models import (
+from tutor import SocraticTutor, _mastery_level, _default_model
+from memory import SessionStore
+from models import (
     AnswerRecord,
     MasteryLevel,
     SessionState,
 )
-from practice_test_agent.cli import _select_topic
+from cli import _select_topic
 
 
 # ---------------------------------------------------------------------------

@@ -15,9 +15,9 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from practice_test_agent.memory import SessionState, SessionStore
-from practice_test_agent.models import AnswerRecord, MasteryLevel, Option, Question, TutorTurn
-from practice_test_agent.prompts import (
+from memory import SessionState, SessionStore
+from models import AnswerRecord, MasteryLevel, Option, Question, TutorTurn
+from prompts import (
     REPORT_CARD_PROMPT,
     RESUME_PROMPT,
     SESSION_INTRO_PROMPT,

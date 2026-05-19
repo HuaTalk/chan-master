@@ -14,8 +14,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-from practice_test_agent.memory import SessionStore
-from practice_test_agent.tutor import SocraticTutor, preflight_llm
+from memory import SessionStore
+from tutor import SocraticTutor, preflight_llm
 
 # ---------------------------------------------------------------------------
 # Rich terminal helpers (zero-dependency ANSI subset)

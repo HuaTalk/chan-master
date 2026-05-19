@@ -9,6 +9,6 @@ _parent = Path(__file__).resolve().parent.parent
 if str(_parent) not in sys.path:
     sys.path.insert(0, str(_parent))
 
-from practice_test_agent.cli import main
+from cli import main
 
 main()

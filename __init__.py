@@ -5,7 +5,7 @@ for session persistence, with an LLM-powered tutor that generates adaptive
 multiple-choice questions and provides targeted feedback.
 """
 
-from practice_test_agent.models import (
+from models import (
     Option,
     Question,
     TutorTurn,

@@ -18,7 +18,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from practice_test_agent.models import AnswerRecord, SessionState
+from models import AnswerRecord, SessionState
 
 # ---------------------------------------------------------------------------
 # Pure-Python fallback implementing the deep-agents-memory protocol
