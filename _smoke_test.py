@@ -15,7 +15,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import load_dotenv
-load_dotenv()
 
 from chan_master import ChanMaster, _mastery_level, _default_model
 from memory import SessionStore
@@ -98,15 +97,19 @@ def _resolve_env_file() -> Path:
 
 
 def _load_smoke_env() -> tuple[bool, str]:
-    """Load env and validate at least one API key for real LLM smoke tests."""
+    """Load env and validate at least one API key for real LLM smoke tests.
+
+    Smoke tests intentionally let the resolved .env override any inherited
+    shell variables so each run uses the current checked configuration.
+    """
     env_path = _resolve_env_file()
     if not env_path.exists():
         return False, (
             "Missing .env for real-LLM smoke test. "
-            "Create ./ .env (or set SMOKE_ENV_FILE) with DEEPSEEK_API_KEY/OPENAI_API_KEY."
+            "Create ./.env (or set SMOKE_ENV_FILE) with DEEPSEEK_API_KEY/OPENAI_API_KEY."
         )
 
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(dotenv_path=env_path, override=True)
     if os.getenv("DEEPSEEK_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip():
         return True, f"Loaded env: {env_path}"
 

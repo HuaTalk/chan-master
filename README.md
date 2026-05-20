@@ -76,6 +76,14 @@ python __main__.py --list-sessions
 
 Chan Master auto-detects which provider to use: if `DEEPSEEK_API_KEY` is set it uses DeepSeek; otherwise it falls back to `OPENAI_API_KEY`.
 
+### Integration smoke test
+
+```bash
+python _smoke_test.py
+```
+
+The smoke test runs local checks first, then real LLM integration checks when a `.env` file is available. It resolves configuration in this order: `SMOKE_ENV_FILE`, project-local `./.env`, then parent `../.env`. The resolved `.env` is loaded with override enabled, so the integration test uses the current `.env` values even if the shell already has API or model variables set.
+
 ## How it works
 
 ```
