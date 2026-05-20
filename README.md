@@ -84,6 +84,14 @@ python _smoke_test.py
 
 The smoke test runs local checks first, then real LLM integration checks when a `.env` file is available. It resolves configuration in this order: `SMOKE_ENV_FILE`, project-local `./.env`, then parent `../.env`. The resolved `.env` is loaded with override enabled, so the integration test uses the current `.env` values even if the shell already has API or model variables set.
 
+### Local unit tests
+
+```bash
+python -m pytest
+```
+
+The pytest suite is pure local: it uses fake async models, avoids real LLM calls, and exercises topic resolution, mastery heuristics, session persistence, and the buffered/non-buffered answer cycles.
+
 ## How it works
 
 ```
