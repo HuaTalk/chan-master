@@ -10,6 +10,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -24,6 +25,52 @@ from models import (
     SessionState,
 )
 from cli import _select_topic
+
+
+class FakeBufferModel:
+    """Small async model stub for buffered-mode tests."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def ainvoke(self, _messages: list[Any]):
+        self.calls += 1
+        return type("Resp", (), {"content": self._content()})()
+
+    def _content(self) -> str:
+        return """
+        {
+          "questions": [
+            {
+              "stem": "In [2, 5, 8], which value is at index 1?",
+              "options": [
+                {"key": "A", "text": "2"},
+                {"key": "B", "text": "5"},
+                {"key": "C", "text": "8"}
+              ],
+              "correct_keys": ["B"]
+            },
+            {
+              "stem": "In [2, 5, 8], which side contains values greater than 5?",
+              "options": [
+                {"key": "A", "text": "left"},
+                {"key": "B", "text": "right"},
+                {"key": "C", "text": "neither"}
+              ],
+              "correct_keys": ["B"]
+            },
+            {
+              "stem": "If target 8 is greater than midpoint 5, where should we search?",
+              "options": [
+                {"key": "A", "text": "left half"},
+                {"key": "B", "text": "right half"},
+                {"key": "C", "text": "stop immediately"}
+              ],
+              "correct_keys": ["B"]
+            }
+          ]
+        }
+        """
 
 
 def _resolve_env_file() -> Path:
@@ -163,6 +210,31 @@ async def test_session_persistence():
     print("  ✅ test_session_persistence")
 
 
+async def test_buffered_answer_cycle():
+    """Buffered mode answers immediately from pre-generated questions."""
+    tutor = SocraticTutor(
+        topic="binary search",
+        model=FakeBufferModel(),
+        store=SessionStore(out_dir="/tmp/pt-smoke-buffer"),
+        buffer_question_num=3,
+        buffer_refresh_percent=0,
+    )
+    turn1 = await tutor.start()
+    assert turn1.question is not None
+    assert len(tutor._question_buffer) == 2
+
+    turn2 = await tutor.answer(list(turn1.question.correct_keys))
+    assert turn2.feedback is not None
+    assert turn2.is_correct is True
+    assert turn2.question is not None
+    assert tutor.session.total_questions == 1
+    assert tutor.session.answers[-1].feedback == turn2.feedback
+
+    import shutil
+    shutil.rmtree("/tmp/pt-smoke-buffer", ignore_errors=True)
+    print("  ✅ test_buffered_answer_cycle")
+
+
 async def test_mastery_heuristics():
     """Verify mastery level progression (no LLM needed)."""
     s0 = SessionState(session_id="t", topic="t")
@@ -215,6 +287,11 @@ async def main():
     print("=" * 56)
     print()
 
+    test_topic_selection()
+    await test_session_persistence()
+    await test_buffered_answer_cycle()
+    await test_mastery_heuristics()
+
     ok_env, env_msg = _load_smoke_env()
     if not ok_env:
         print(f"  ⚠ {env_msg}")
@@ -222,10 +299,7 @@ async def main():
         return
     print(f"  ✅ {env_msg}")
 
-    test_topic_selection()
     await test_model_init()
-    await test_session_persistence()
-    await test_mastery_heuristics()
     await test_question_generation()
     await test_correct_answer_cycle()
     await test_wrong_answer_cycle()

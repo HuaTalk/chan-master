@@ -1,0 +1,77 @@
+[
+  {
+    "summary": "Buffer support task started",
+    "status": "starting",
+    "files_touched": [
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T13:18:26.001Z"
+  },
+  {
+    "summary": "Buffer design chosen",
+    "detail": "Buffer remains optional; default behavior is preserved when buffer_question_num is zero.",
+    "status": "investigating",
+    "files_touched": [
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T13:19:54.873Z"
+  },
+  {
+    "summary": "Buffer implementation underway",
+    "detail": "Tutor, prompts, CLI, and tests will be updated for optional question buffering.",
+    "status": "implementing",
+    "files_touched": [
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T13:20:59.921Z"
+  },
+  {
+    "summary": "Buffer code and docs complete",
+    "detail": "Optional buffered questions, CLI flags, prompts, and smoke coverage were added.",
+    "status": "implementing",
+    "files_touched": [
+      "tutor.py",
+      "prompts.py",
+      "cli.py",
+      "_smoke_test.py",
+      "README.md",
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T13:24:53.076Z"
+  },
+  {
+    "summary": "Compile passed; smoke rerouted",
+    "detail": "Full smoke entered a long real-LLM path, so verification is continuing with real LLM explicitly skipped.",
+    "status": "testing",
+    "files_touched": [
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T13:28:32.731Z"
+  },
+  {
+    "summary": "Buffer support verified",
+    "detail": "Compile and no-LLM smoke checks passed; real LLM smoke was skipped intentionally.",
+    "status": "done",
+    "files_touched": [
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T13:31:10.889Z"
+  },
+  {
+    "summary": "Buffer support ready to commit",
+    "status": "done",
+    "files_touched": [
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T13:50:05.711Z"
+  },
+  {
+    "summary": "Merge blocker cleared",
+    "detail": "Removed an empty untracked .claude/settings.json that prevented task merge.",
+    "status": "done",
+    "files_touched": [
+      ".claude/steps.json"
+    ],
+    "timestamp": "2026-05-20T14:01:36.941Z"
+  }
+]

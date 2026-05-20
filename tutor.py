@@ -6,6 +6,7 @@ evaluates answers, tracks progress, and decides when mastery is reached.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -18,6 +19,10 @@ from langchain_openai import ChatOpenAI
 from memory import SessionState, SessionStore
 from models import AnswerRecord, MasteryLevel, Option, Question, TutorTurn
 from prompts import (
+    BUFFER_FEEDBACK_CORRECT,
+    BUFFER_FEEDBACK_INCORRECT,
+    BUFFER_QUESTIONS_PROMPT,
+    BUFFER_REFRESH_PROMPT,
     REPORT_CARD_PROMPT,
     RESUME_PROMPT,
     SESSION_INTRO_PROMPT,
@@ -74,6 +79,8 @@ class SocraticTutor:
         model: Optional[BaseChatModel] = None,
         store: Optional[SessionStore] = None,
         session: Optional[SessionState] = None,
+        buffer_question_num: int = 0,
+        buffer_refresh_percent: int = 70,
     ) -> None:
         self.topic = topic
         self.model = model or _default_model()
@@ -84,6 +91,11 @@ class SocraticTutor:
         )
         self._messages: list = []  # full conversation (LLM message list)
         self._last_question: Optional[Question] = None  # cached for answer()
+        self.buffer_question_num = max(0, buffer_question_num)
+        self.buffer_refresh_percent = min(100, max(0, buffer_refresh_percent))
+        self._question_buffer: list[Question] = []
+        self._refresh_task: Optional[asyncio.Task] = None
+        self._refresh_error: Optional[BaseException] = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -116,6 +128,10 @@ class SocraticTutor:
                     )
                 ),
             ]
+
+        if self.buffer_enabled:
+            await self._ensure_buffer(force=True)
+            return self._turn_from_buffer()
 
         return await self._next_turn()
 
@@ -150,11 +166,15 @@ class SocraticTutor:
             self.session.correct_count += 1
         self.session.turn_count += 1
 
-        # Get next turn from LLM
-        turn = await self._next_turn()
+        if self.buffer_enabled:
+            self.session.answers[-1].feedback = self._buffer_feedback(last_q, chosen_keys, is_correct)
+            turn = await self._next_buffered_turn(is_correct)
+        else:
+            # Get next turn from LLM
+            turn = await self._next_turn()
 
         # Update the feedback for the record
-        if turn.feedback:
+        if turn.feedback and not self.buffer_enabled:
             self.session.answers[-1].feedback = turn.feedback
 
         # Handle session completion
@@ -168,6 +188,11 @@ class SocraticTutor:
     @property
     def mastery(self) -> tuple[MasteryLevel, str]:
         return _mastery_level(self.session)
+
+    @property
+    def buffer_enabled(self) -> bool:
+        """Whether the tutor should serve pre-generated questions."""
+        return self.buffer_question_num > 0
 
     async def generate_report_card(self) -> str:
         """Generate a natural-language report card for the session."""
@@ -217,6 +242,147 @@ class SocraticTutor:
 
         return turn
 
+    async def _next_buffered_turn(self, is_correct: bool) -> TutorTurn:
+        """Return feedback plus the next pre-generated question."""
+        feedback = self.session.answers[-1].feedback
+
+        if self._should_complete():
+            self._last_question = None
+            return TutorTurn(
+                feedback=feedback,
+                is_correct=is_correct,
+                session_complete=True,
+                summary=(
+                    f"You've completed {self.session.total_questions} questions "
+                    f"({self.session.correct_count} correct). "
+                    f"{self.mastery[1]}"
+                ),
+            )
+
+        self._start_refresh_if_needed()
+
+        if not self._question_buffer:
+            await self._ensure_buffer(force=True)
+
+        turn = self._turn_from_buffer()
+        turn.feedback = feedback
+        turn.is_correct = is_correct
+        return turn
+
+    def _turn_from_buffer(self) -> TutorTurn:
+        """Pop the next buffered question and cache it as the current question."""
+        if not self._question_buffer:
+            raise RuntimeError("Question buffer is empty")
+        question = self._question_buffer.pop(0)
+        self._last_question = question
+        self._start_refresh_if_needed()
+        return TutorTurn(question=question)
+
+    async def _ensure_buffer(self, force: bool = False) -> None:
+        """Synchronously fill the question buffer when it is too small."""
+        if self._refresh_task:
+            try:
+                await self._refresh_task
+            finally:
+                self._refresh_task = None
+        if self._refresh_error:
+            error = self._refresh_error
+            self._refresh_error = None
+            raise error
+
+        if not force and len(self._question_buffer) > 0:
+            return
+
+        needed = self.buffer_question_num - len(self._question_buffer)
+        if needed <= 0:
+            return
+        self._question_buffer.extend(await self._generate_buffer_questions(needed))
+
+    def _start_refresh_if_needed(self) -> None:
+        """Start a background refresh when the buffer reaches the threshold."""
+        if not self.buffer_enabled or self._refresh_task or self._should_complete():
+            return
+
+        threshold = max(0, int(self.buffer_question_num * self.buffer_refresh_percent / 100))
+        if len(self._question_buffer) > threshold:
+            return
+
+        needed = self.buffer_question_num - len(self._question_buffer)
+        if needed <= 0:
+            return
+
+        self._refresh_task = asyncio.create_task(self._refresh_buffer(needed))
+
+    async def _refresh_buffer(self, count: int) -> None:
+        """Refresh the question buffer without blocking user input."""
+        try:
+            self._question_buffer.extend(await self._generate_buffer_questions(count))
+        except BaseException as exc:
+            self._refresh_error = exc
+        finally:
+            self._refresh_task = None
+
+    async def _generate_buffer_questions(self, count: int) -> list[Question]:
+        """Ask the LLM for upcoming questions only."""
+        if count <= 0:
+            return []
+
+        prompt = self._buffer_prompt(count)
+        response = await self.model.ainvoke([SystemMessage(content=prompt)])
+        content = response.content if hasattr(response, "content") else str(response)
+        raw = self._extract_json(content)
+        questions = [self._parse_question(q) for q in raw.get("questions", [])]
+        if not questions:
+            raise ValueError(f"LLM output did not contain buffered questions:\n{content[:500]}")
+        return questions[:count]
+
+    def _buffer_prompt(self, count: int) -> str:
+        """Build the prompt used to generate or refresh buffered questions."""
+        mastery_level, mastery_desc = self.mastery
+        kwargs = {
+            "topic": self.topic,
+            "count": count,
+            "total_questions": self.session.total_questions,
+            "correct_count": self.session.correct_count,
+            "mastery_status": f"{mastery_level.value}: {mastery_desc}",
+            "history": self._format_history() or "(no answered questions yet)",
+        }
+        if self._question_buffer:
+            return BUFFER_REFRESH_PROMPT.format(
+                **kwargs,
+                buffered_questions=self._format_buffered_questions(),
+            )
+        return BUFFER_QUESTIONS_PROMPT.format(**kwargs)
+
+    def _parse_question(self, raw: dict) -> Question:
+        """Parse a dict into a ``Question``."""
+        options = [Option(**o) for o in raw.get("options", [])]
+        return Question(
+            stem=raw["stem"],
+            options=options,
+            correct_keys=list(raw.get("correct_keys", [])),
+        )
+
+    def _buffer_feedback(self, question: Question, chosen_keys: list[str], is_correct: bool) -> str:
+        """Create immediate local feedback for buffered mode."""
+        correct_text = self._option_text(question, question.correct_keys)
+        chosen_text = self._option_text(question, chosen_keys)
+        if is_correct:
+            explanation = f"{correct_text} is the answer."
+            return BUFFER_FEEDBACK_CORRECT.format(explanation=explanation)
+        explanation = f"You chose {chosen_text}; the answer is {correct_text}."
+        return BUFFER_FEEDBACK_INCORRECT.format(explanation=explanation)
+
+    def _option_text(self, question: Question, keys: list[str]) -> str:
+        """Format selected option keys with their text."""
+        by_key = {o.key: o.text for o in question.options}
+        return ", ".join(f"{k}) {by_key.get(k, '')}".strip() for k in keys)
+
+    def _should_complete(self) -> bool:
+        """Apply completion heuristics without asking the LLM."""
+        mastery_level, _ = self.mastery
+        return mastery_level == MasteryLevel.MASTERED or self.session.turn_count >= _MAX_TURNS
+
     def _extract_json(self, text: str) -> dict:
         """Extract the first JSON object from *text*."""
         match = _JSON_RE.search(text)
@@ -230,12 +396,7 @@ class SocraticTutor:
         q_raw = raw.get("question")
         question = None
         if q_raw:
-            options = [Option(**o) for o in q_raw.get("options", [])]
-            question = Question(
-                stem=q_raw["stem"],
-                options=options,
-                correct_keys=list(q_raw.get("correct_keys", [])),
-            )
+            question = self._parse_question(q_raw)
 
         return TutorTurn(
             question=question,
@@ -257,6 +418,15 @@ class SocraticTutor:
             if a.feedback:
                 lines.append(f"  Tutor: {a.feedback}")
             lines.append("")
+        return "\n".join(lines)
+
+    def _format_buffered_questions(self) -> str:
+        """Format pending buffered questions for refresh prompts."""
+        lines: list[str] = []
+        for i, question in enumerate(self._question_buffer, 1):
+            correct = ", ".join(question.correct_keys)
+            lines.append(f"{i}. {question.stem}")
+            lines.append(f"   Correct: {correct}")
         return "\n".join(lines)
 
 

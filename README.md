@@ -53,6 +53,15 @@ CLI 会在进入练习前自动探测一次 LLM 可用性；若 API Key / base U
 python __main__.py --topic "binary search"
 ```
 
+### Question buffer
+
+```bash
+python __main__.py --topic "binary search" --buffer-question-num 5
+python __main__.py --topic "binary search" --buffer-question-num 5 --buffer-refresh-percent 70
+```
+
+`--buffer-question-num` enables pre-generated questions so the next question can appear immediately after an answer. `--buffer-refresh-percent` defaults to `70`, meaning the tutor starts replenishing the buffer once the remaining buffered questions are at or below 70% of the configured buffer size.
+
 ### Resume an incomplete session
 
 ```bash
@@ -90,6 +99,8 @@ The tutor auto-detects which provider to use: if `DEEPSEEK_API_KEY` is set it us
 │  5. Repeats until mastery threshold reached or user quits│
 └──────────────────────────────────────────────────────────┘
 ```
+
+When buffering is enabled, the LLM pre-generates a queue of upcoming questions. Answers are checked locally against each question's `correct_keys`, immediate feedback is shown, and the buffer refreshes in the background when it reaches the configured threshold. With `--buffer-question-num 0`, the tutor keeps the original per-turn LLM evaluation flow.
 
 ### Mastery heuristic
 

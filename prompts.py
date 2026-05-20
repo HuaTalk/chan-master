@@ -71,6 +71,84 @@ Remember the *Little Schemer* style: small steps, concrete examples, one idea pe
 """
 
 
+BUFFER_QUESTIONS_PROMPT = """\
+Generate {count} upcoming multiple-choice questions for the topic: **{topic}**.
+
+The learner has already answered {total_questions} questions (correct: {correct_count}).
+Mastery status: {mastery_status}
+
+Here is the conversation so far:
+
+{history}
+
+Continue in the same *Little Schemer* style:
+- one idea per question
+- concrete examples first
+- each question builds on the previous generated question
+- do not include feedback or session summaries
+- do not repeat concepts already covered
+
+Output valid JSON with exactly this shape:
+{{
+  "questions": [
+    {{
+      "stem": "the question text, using a concrete example",
+      "options": [
+        {{"key": "A", "text": "option text"}},
+        {{"key": "B", "text": "option text"}},
+        {{"key": "C", "text": "option text"}}
+      ],
+      "correct_keys": ["A"]
+    }}
+  ]
+}}
+"""
+
+
+BUFFER_REFRESH_PROMPT = """\
+Generate {count} additional upcoming multiple-choice questions for the topic: **{topic}**.
+
+The learner has already answered {total_questions} questions (correct: {correct_count}).
+Mastery status: {mastery_status}
+
+Here is the conversation so far:
+
+{history}
+
+Questions currently waiting in the buffer:
+
+{buffered_questions}
+
+Continue after those buffered questions. Preserve the incremental teaching path:
+- one idea per question
+- concrete examples first
+- each question builds on the previous covered or buffered question
+- do not include feedback or session summaries
+- avoid duplicates of answered or buffered questions
+
+Output valid JSON with exactly this shape:
+{{
+  "questions": [
+    {{
+      "stem": "the question text, using a concrete example",
+      "options": [
+        {{"key": "A", "text": "option text"}},
+        {{"key": "B", "text": "option text"}},
+        {{"key": "C", "text": "option text"}}
+      ],
+      "correct_keys": ["A"]
+    }}
+  ]
+}}
+"""
+
+
+BUFFER_FEEDBACK_CORRECT = "Good. {explanation} Now try the next small step."
+
+
+BUFFER_FEEDBACK_INCORRECT = "Not quite. {explanation} Look at the next small step."
+
+
 RESUME_PROMPT = """\
 The learner has already answered {total_questions} questions (correct: {correct_count}).
 Here is the conversation so far:

@@ -191,7 +191,12 @@ def _select_resume_session(store: SessionStore) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-async def _run_session(topic: str, resume_session_id: str | None = None) -> None:
+async def _run_session(
+    topic: str,
+    resume_session_id: str | None = None,
+    buffer_question_num: int = 0,
+    buffer_refresh_percent: int = 70,
+) -> None:
     """Run the tutoring session loop."""
     store = SessionStore()
 
@@ -203,7 +208,13 @@ async def _run_session(topic: str, resume_session_id: str | None = None) -> None
     else:
         session = None
 
-    tutor = SocraticTutor(topic=topic, store=store, session=session)
+    tutor = SocraticTutor(
+        topic=topic,
+        store=store,
+        session=session,
+        buffer_question_num=buffer_question_num,
+        buffer_refresh_percent=buffer_refresh_percent,
+    )
 
     # --- First turn ---
     turn = await tutor.start()
@@ -264,6 +275,18 @@ def main() -> None:
         action="store_true",
         help="List recent sessions",
     )
+    parser.add_argument(
+        "--buffer-question-num",
+        type=int,
+        default=0,
+        help="Pre-generate this many questions to reduce wait time (0 disables buffering)",
+    )
+    parser.add_argument(
+        "--buffer-refresh-percent",
+        type=int,
+        default=70,
+        help="Refresh buffer when remaining questions are at or below this percentage",
+    )
     args = parser.parse_args()
 
     # Load .env if present
@@ -314,7 +337,14 @@ def main() -> None:
         print(f"  {_p('No topic selected. Goodbye!', 'dim')}")
         return
 
-    asyncio.run(_run_session(topic, resume_session_id=resume_id))
+    asyncio.run(
+        _run_session(
+            topic,
+            resume_session_id=resume_id,
+            buffer_question_num=args.buffer_question_num,
+            buffer_refresh_percent=args.buffer_refresh_percent,
+        )
+    )
 
 
 if __name__ == "__main__":
