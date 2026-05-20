@@ -7,9 +7,12 @@ Run with real API credentials from .env or INTEGRATION_ENV_FILE.
 
 import asyncio
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from chan_master import ChanMaster, _default_model
 
