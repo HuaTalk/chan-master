@@ -206,7 +206,7 @@ class ChanMaster:
             pct=pct,
         )
         resp = await self.model.ainvoke([SystemMessage(content=prompt)])
-        return resp.content if hasattr(resp, "content") else str(resp)
+        return _message_text(resp)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -229,7 +229,7 @@ class ChanMaster:
             )
 
         response = await self.model.ainvoke(self._messages)
-        content = response.content if hasattr(response, "content") else str(response)
+        content = _message_text(response)
         self._messages.append(AIMessage(content=content))
 
         raw = self._extract_json(content)
@@ -330,7 +330,7 @@ class ChanMaster:
 
         prompt = self._buffer_prompt(count)
         response = await self.model.ainvoke([SystemMessage(content=prompt)])
-        content = response.content if hasattr(response, "content") else str(response)
+        content = _message_text(response)
         raw = self._extract_json(content)
         questions = [self._parse_question(q) for q in self._coerce_list(raw.get("questions", []))]
         if not questions:
@@ -500,6 +500,26 @@ _MODEL_CACHE: dict[str, BaseChatModel] = {}
 _DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro"
 _DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+_CHAT_OPENAI_OUTPUT_VERSION = "v0"
+
+
+def _message_text(response: object) -> str:
+    """Return textual model output across LangChain content formats."""
+    content = getattr(response, "content", response)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                text = block.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+        if parts:
+            return "\n".join(parts)
+    return str(content)
 
 
 def _default_model() -> BaseChatModel:
@@ -529,6 +549,7 @@ def _default_model() -> BaseChatModel:
                 model=model,
                 api_key=deepseek_key,
                 base_url=base_url,
+                output_version=_CHAT_OPENAI_OUTPUT_VERSION,
             )
         return _MODEL_CACHE[cache_key]
 
@@ -541,6 +562,7 @@ def _default_model() -> BaseChatModel:
                 model=model,
                 api_key=openai_key,
                 base_url=base_url,
+                output_version=_CHAT_OPENAI_OUTPUT_VERSION,
             )
         return _MODEL_CACHE[cache_key]
 

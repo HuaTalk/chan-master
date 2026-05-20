@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from chan_master import ChanMaster, _mastery_level
+from chan_master import ChanMaster, _mastery_level, _message_text
 from cli import _select_topic
 from memory import SessionStore
 from models import AnswerRecord, MasteryLevel, SessionState
@@ -131,6 +131,16 @@ def test_topic_selection_aliases_and_custom_topic():
     assert _select_topic("langgraph") == "langgraph"
     assert _select_topic("recursion") == "recursion"
     assert _select_topic("custom stuff") == "custom stuff"
+
+
+def test_message_text_blocks_are_flattened():
+    response = type(
+        "Resp",
+        (),
+        {"content": [{"type": "text", "text": "{\"ok\": true}"}, {"type": "reasoning"}]},
+    )()
+
+    assert _message_text(response) == "{\"ok\": true}"
 
 
 def test_mastery_heuristics_progression():
