@@ -1,4 +1,4 @@
-"""CLI interface for the Socratic practice-test agent.
+"""CLI interface for Chan Master.
 
 Usage
 -----
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from memory import SessionStore
-from tutor import SocraticTutor, preflight_llm
+from chan_master import ChanMaster, preflight_llm
 
 # ---------------------------------------------------------------------------
 # Rich terminal helpers (zero-dependency ANSI subset)
@@ -42,13 +42,13 @@ def _print_banner() -> None:
     print()
     print(_p("  ╔══════════════════════════════════════════╗", "cyan"))
     print(_p("  ║     Chan Master                          ║", "cyan"))
-    print(_p("  ║     Socratic tutor · The Little Schemer  ║", "cyan"))
+    print(_p("  ║     Socratic guide · The Little Schemer  ║", "cyan"))
     print(_p("  ╚══════════════════════════════════════════╝", "cyan"))
     print()
 
 
 def _print_turn(turn, mastery, turn_count: int) -> None:
-    """Print a TutorTurn to the terminal."""
+    """Print a ChanTurn to the terminal."""
     if turn.feedback:
         # Color-code feedback
         if turn.is_correct is True:
@@ -197,7 +197,7 @@ async def _run_session(
     buffer_question_num: int = 0,
     buffer_refresh_percent: int = 70,
 ) -> None:
-    """Run the tutoring session loop."""
+    """Run the practice session loop."""
     store = SessionStore()
 
     if resume_session_id:
@@ -208,7 +208,7 @@ async def _run_session(
     else:
         session = None
 
-    tutor = SocraticTutor(
+    chan = ChanMaster(
         topic=topic,
         store=store,
         session=session,
@@ -217,9 +217,9 @@ async def _run_session(
     )
 
     # --- First turn ---
-    turn = await tutor.start()
+    turn = await chan.start()
     while True:
-        _print_turn(turn, tutor.mastery, tutor.session.turn_count)
+        _print_turn(turn, chan.mastery, chan.session.turn_count)
 
         if turn.session_complete:
             break
@@ -244,22 +244,22 @@ async def _run_session(
                 valid_text = ", ".join(sorted(valid_keys))
                 print(f"  {_p(f'Please pick from: {valid_text}', 'yellow')}")
 
-            turn = await tutor.answer(chosen)
+            turn = await chan.answer(chosen)
 
     # --- Session complete ---
     print()
-    report = await tutor.generate_report_card()
+    report = await chan.generate_report_card()
     print(f"  {_p('Report Card', 'bold')}")
     print(f"  {report}")
     print()
 
     # Save final state
-    await tutor.store.save(tutor.session)
+    await chan.store.save(chan.session)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Chan Master — Socratic tutor in the style of The Little Schemer",
+        description="Chan Master — Socratic guide in the style of The Little Schemer",
     )
     parser.add_argument(
         "--topic", "-t",

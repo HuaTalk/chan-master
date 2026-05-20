@@ -1,7 +1,7 @@
-# Agent Guidelines for practice-test-agent
+# Agent Guidelines for chan-master
 
-This submodule implements a Socratic practice-test tutor in the style of
-*The Little Schemer*, powered by an LLM and the deep-agents-memory pattern.
+This project implements Chan Master, a Socratic practice guide in the style of
+*The Little Schemer*, powered by an LLM and local CompositeBackend persistence.
 
 ## Principles
 
@@ -15,14 +15,14 @@ This submodule implements a Socratic practice-test tutor in the style of
 
 | Layer | File | Role |
 |---|---|---|
-| Models | `models.py` | `Question`, `TutorTurn`, `SessionState` |
+| Models | `models.py` | `Question`, `ChanTurn`, `SessionState` |
 | Prompts | `prompts.py` | System prompt in *Little Schemer* style |
-| Memory | `memory.py` | deep-agents-compatible `CompositeBackend` (StateBackend + FilesystemMiddleware) + `SessionStore` |
-| Engine | `tutor.py` | `SocraticTutor` — LLM call loop, answer evaluation, mastery heuristics |
+| Memory | `memory.py` | `CompositeBackend` (StateBackend + FilesystemMiddleware) + `SessionStore` |
+| Engine | `chan_master.py` | `ChanMaster` — LLM call loop, answer evaluation, mastery heuristics |
 | CLI | `cli.py` | Argument parsing, interactive topic selection, main loop |
 
 ## Extending
 
 - **New topics** — add entries to `_PRESET_TOPICS` and `_TOPIC_ALIASES` in `cli.py`.
-- **Custom mastery rules** — edit `_mastery_level()` in `tutor.py`.
+- **Custom mastery rules** — edit `_mastery_level()` in `chan_master.py`.
 - **Changing the teaching style** — edit the `SYSTEM_PROMPT` in `prompts.py`.

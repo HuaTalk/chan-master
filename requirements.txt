@@ -2,5 +2,3 @@ langchain>=0.3
 langchain-openai>=0.3
 openai>=1.70
 python-dotenv>=1.1
-# deep-agents-memory (optional — provides StateBackend / StoreBackend / FilesystemMiddleware)
-# pip install deep-agents-memory

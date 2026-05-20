@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convenience entry point — run ``python main.py`` from any working directory."""
+"""Convenience entry point: run ``python main.py`` from this project."""
 
 import sys
 from pathlib import Path

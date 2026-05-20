@@ -1,4 +1,4 @@
-"""Socratic tutoring engine powered by an LLM.
+"""Chan Master engine powered by an LLM.
 
 Generates adaptive multiple-choice questions in *The Little Schemer* style,
 evaluates answers, tracks progress, and decides when mastery is reached.
@@ -17,7 +17,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from memory import SessionState, SessionStore
-from models import AnswerRecord, MasteryLevel, Option, Question, TutorTurn
+from models import AnswerRecord, ChanTurn, MasteryLevel, Option, Question
 from prompts import (
     BUFFER_FEEDBACK_CORRECT,
     BUFFER_FEEDBACK_INCORRECT,
@@ -66,12 +66,12 @@ def _mastery_level(state: SessionState) -> tuple[MasteryLevel, str]:
 
 
 # ---------------------------------------------------------------------------
-# Tutor
+# Chan Master
 # ---------------------------------------------------------------------------
 
 
-class SocraticTutor:
-    """LLM-powered Socratic tutor for a single topic session."""
+class ChanMaster:
+    """LLM-powered Socratic guide for a single topic session."""
 
     def __init__(
         self,
@@ -101,10 +101,10 @@ class SocraticTutor:
     # Public API
     # ------------------------------------------------------------------
 
-    async def start(self) -> TutorTurn:
-        """Begin or resume a tutoring session.
+    async def start(self) -> ChanTurn:
+        """Begin or resume a practice session.
 
-        Returns the first ``TutorTurn`` with a question.
+        Returns the first ``ChanTurn`` with a question.
         """
         if not self.session.session_id:
             self.session = await self.store.new_session(self.topic)
@@ -135,10 +135,10 @@ class SocraticTutor:
 
         return await self._next_turn()
 
-    async def answer(self, chosen_keys: list[str]) -> TutorTurn:
-        """Submit the learner's answer and get the next ``TutorTurn``.
+    async def answer(self, chosen_keys: list[str]) -> ChanTurn:
+        """Submit the learner's answer and get the next ``ChanTurn``.
 
-        The tutor evaluates the answer, appends feedback, and either
+        Chan Master evaluates the answer, appends feedback, and either
         presents the next question or ends the session.
         """
         # Record the last question context
@@ -191,7 +191,7 @@ class SocraticTutor:
 
     @property
     def buffer_enabled(self) -> bool:
-        """Whether the tutor should serve pre-generated questions."""
+        """Whether Chan Master should serve pre-generated questions."""
         return self.buffer_question_num > 0
 
     async def generate_report_card(self) -> str:
@@ -211,14 +211,14 @@ class SocraticTutor:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _next_turn(self) -> TutorTurn:
-        """Call the LLM and parse the structured response into a TutorTurn.
+    async def _next_turn(self) -> ChanTurn:
+        """Call the LLM and parse the structured response into a ChanTurn.
 
-        If the session has exceeded ``_MAX_TURNS`` the tutor force-completes
+        If the session has exceeded ``_MAX_TURNS`` Chan Master force-completes
         with a summary rather than making another LLM call.
         """
         if self.session.turn_count >= _MAX_TURNS:
-            return TutorTurn(
+            return ChanTurn(
                 session_complete=True,
                 summary=(
                     f"You've completed {self.session.total_questions} questions "
@@ -242,13 +242,13 @@ class SocraticTutor:
 
         return turn
 
-    async def _next_buffered_turn(self, is_correct: bool) -> TutorTurn:
+    async def _next_buffered_turn(self, is_correct: bool) -> ChanTurn:
         """Return feedback plus the next pre-generated question."""
         feedback = self.session.answers[-1].feedback
 
         if self._should_complete():
             self._last_question = None
-            return TutorTurn(
+            return ChanTurn(
                 feedback=feedback,
                 is_correct=is_correct,
                 session_complete=True,
@@ -269,14 +269,14 @@ class SocraticTutor:
         turn.is_correct = is_correct
         return turn
 
-    def _turn_from_buffer(self) -> TutorTurn:
+    def _turn_from_buffer(self) -> ChanTurn:
         """Pop the next buffered question and cache it as the current question."""
         if not self._question_buffer:
             raise RuntimeError("Question buffer is empty")
         question = self._question_buffer.pop(0)
         self._last_question = question
         self._start_refresh_if_needed()
-        return TutorTurn(question=question)
+        return ChanTurn(question=question)
 
     async def _ensure_buffer(self, force: bool = False) -> None:
         """Synchronously fill the question buffer when it is too small."""
@@ -391,14 +391,14 @@ class SocraticTutor:
             raise ValueError(msg)
         return json.loads(match.group())
 
-    def _parse_turn(self, raw: dict) -> TutorTurn:
-        """Parse a dict into a ``TutorTurn``."""
+    def _parse_turn(self, raw: dict) -> ChanTurn:
+        """Parse a dict into a ``ChanTurn``."""
         q_raw = raw.get("question")
         question = None
         if q_raw:
             question = self._parse_question(q_raw)
 
-        return TutorTurn(
+        return ChanTurn(
             question=question,
             feedback=raw.get("feedback"),
             is_correct=raw.get("is_correct"),
@@ -416,7 +416,7 @@ class SocraticTutor:
             lines.append(f"Q: {a.stem}")
             lines.append(f"  Answer: {chosen} (correct: {correct}) {marker}")
             if a.feedback:
-                lines.append(f"  Tutor: {a.feedback}")
+                lines.append(f"  Chan Master: {a.feedback}")
             lines.append("")
         return "\n".join(lines)
 
@@ -449,18 +449,18 @@ def _default_model() -> BaseChatModel:
       2. ``OPENAI_API_KEY``             → OpenAI
       3. No key set at all              → raises ``ValueError``
 
-    The model name comes from ``PRACTICE_MODEL`` (default depends on provider).
-    The API base URL can be overridden via ``PRACTICE_BASE_URL``.
+    The model name comes from ``CHAN_MASTER_MODEL`` (default depends on provider).
+    The API base URL can be overridden via ``CHAN_MASTER_BASE_URL``.
     """
     # Resolve model name
-    model_name = os.getenv("PRACTICE_MODEL", "").strip()
+    model_name = os.getenv("CHAN_MASTER_MODEL", "").strip()
 
     # Resolve provider
     deepseek_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
     openai_key = os.getenv("OPENAI_API_KEY", "").strip()
 
     if deepseek_key:
-        base_url = (os.getenv("PRACTICE_BASE_URL") or _DEEPSEEK_BASE_URL).rstrip("/")
+        base_url = (os.getenv("CHAN_MASTER_BASE_URL") or _DEEPSEEK_BASE_URL).rstrip("/")
         model = model_name or _DEFAULT_DEEPSEEK_MODEL
         cache_key = f"deepseek:{model}:{base_url}"
         if cache_key not in _MODEL_CACHE:
@@ -472,7 +472,7 @@ def _default_model() -> BaseChatModel:
         return _MODEL_CACHE[cache_key]
 
     if openai_key:
-        base_url = os.getenv("PRACTICE_BASE_URL", "").strip() or None
+        base_url = os.getenv("CHAN_MASTER_BASE_URL", "").strip() or None
         model = model_name or _DEFAULT_OPENAI_MODEL
         cache_key = f"openai:{model}:{base_url or 'default'}"
         if cache_key not in _MODEL_CACHE:
@@ -494,7 +494,7 @@ def llm_config_guide() -> str:
         "请先配置 LLM 后再启动：\n"
         "  1) 在项目根目录创建并填写 .env（可参考 .env.example）\n"
         "  2) 至少设置一个 API Key：DEEPSEEK_API_KEY 或 OPENAI_API_KEY\n"
-        "  3) 如有代理/网关，检查 PRACTICE_BASE_URL 与 PRACTICE_MODEL 是否正确"
+        "  3) 如有代理/网关，检查 CHAN_MASTER_BASE_URL 与 CHAN_MASTER_MODEL 是否正确"
     )
 
 

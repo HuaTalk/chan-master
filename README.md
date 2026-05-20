@@ -1,14 +1,14 @@
 # chan-master
 
-**AI-powered Socratic tutoring** — in the style of *The Little Schemer*.
+**AI-powered Socratic practice** — in the style of *The Little Schemer*.
 
-Practice tests are one of the most effective learning techniques ([Roediger & Karpicke, 2006](https://doi.org/10.1111/j.1751-228X.2006.tb00771.x)). This module turns that insight into a CLI-based guided testing agent: it generates adaptive multiple-choice questions on any topic, evaluates your answers, and guides you step by step until you master the material.
+Practice tests are one of the most effective learning techniques ([Roediger & Karpicke, 2006](https://doi.org/10.1111/j.1751-228X.2006.tb00771.x)). Chan Master turns that insight into a CLI-based guided practice tool: it generates adaptive multiple-choice questions on any topic, evaluates your answers, and guides you step by step until you master the material.
 
 ## Philosophy
 
 > *The Little Schemer* teaches one idea at a time. Each question builds on the last. Wrong answers get a gentle reframe, not a lecture. Right answers get a quick affirmation and the next — slightly harder — challenge.
 
-This tutor follows the same approach:
+Chan Master follows the same approach:
 
 - **Concrete first.** Every question starts with a specific example: *"Consider the list [2, 5, 8, 12, 19]. What's the midpoint?"*
 - **One idea per turn.** No compound questions. Master the invariant before discussing edge cases.
@@ -50,7 +50,7 @@ python __main__.py --topic "binary search" --buffer-question-num 5
 python __main__.py --topic "binary search" --buffer-question-num 5 --buffer-refresh-percent 70
 ```
 
-`--buffer-question-num` enables pre-generated questions so the next question can appear immediately after an answer. `--buffer-refresh-percent` defaults to `70`, meaning the tutor starts replenishing the buffer once the remaining buffered questions are at or below 70% of the configured buffer size.
+`--buffer-question-num` enables pre-generated questions so the next question can appear immediately after an answer. `--buffer-refresh-percent` defaults to `70`, meaning Chan Master starts replenishing the buffer once the remaining buffered questions are at or below 70% of the configured buffer size.
 
 ### Resume an incomplete session
 
@@ -70,11 +70,11 @@ python __main__.py --list-sessions
 |---|---|---|
 | `DEEPSEEK_API_KEY` | — | DeepSeek API key (takes priority) |
 | `OPENAI_API_KEY` | — | OpenAI API key (fallback) |
-| `PRACTICE_MODEL` | `deepseek-v4-pro` / `gpt-4.1-mini` | Model name (per-provider default) |
-| `PRACTICE_BASE_URL` | `https://api.deepseek.com/v1` | Custom API base URL |
-| `PRACTICE_OUT_DIR` | `./out` | Session persistence directory |
+| `CHAN_MASTER_MODEL` | `deepseek-v4-pro` / `gpt-4.1-mini` | Model name (per-provider default) |
+| `CHAN_MASTER_BASE_URL` | `https://api.deepseek.com/v1` | Custom API base URL |
+| `CHAN_MASTER_OUT_DIR` | `./out` | Session persistence directory |
 
-The tutor auto-detects which provider to use: if `DEEPSEEK_API_KEY` is set it uses DeepSeek; otherwise it falls back to `OPENAI_API_KEY`。
+Chan Master auto-detects which provider to use: if `DEEPSEEK_API_KEY` is set it uses DeepSeek; otherwise it falls back to `OPENAI_API_KEY`.
 
 ## How it works
 
@@ -84,17 +84,17 @@ The tutor auto-detects which provider to use: if `DEEPSEEK_API_KEY` is set it us
 │  2. CLI displays question, waits for user input          │
 │  3. LLM evaluates answer, gives feedback,               │
 │     generates next question                              │
-│  4. Session state saved via deep-agents-memory pattern   │
+│  4. Session state saved via CompositeBackend pattern     │
 │     (CompositeBackend: StateBackend + FilesystemMiddleware) │
 │  5. Repeats until mastery threshold reached or user quits│
 └──────────────────────────────────────────────────────────┘
 ```
 
-When buffering is enabled, the LLM pre-generates a queue of upcoming questions. Answers are checked locally against each question's `correct_keys`, immediate feedback is shown, and the buffer refreshes in the background when it reaches the configured threshold. With `--buffer-question-num 0`, the tutor keeps the original per-turn LLM evaluation flow.
+When buffering is enabled, the LLM pre-generates a queue of upcoming questions. Answers are checked locally against each question's `correct_keys`, immediate feedback is shown, and the buffer refreshes in the background when it reaches the configured threshold. With `--buffer-question-num 0`, Chan Master keeps the original per-turn LLM evaluation flow.
 
 ### Mastery heuristic
 
-The tutor tracks your accuracy and recent streak:
+Chan Master tracks your accuracy and recent streak:
 
 | Level | Condition |
 |---|---|
@@ -109,7 +109,7 @@ The tutor tracks your accuracy and recent streak:
 Sessions are persisted using the **CompositeBackend** pattern:
 
 - `StateBackend` — in-memory cache (per-process)
-- `FilesystemMiddleware` — JSON files on disk (in `PRACTICE_OUT_DIR` or `./out/`)
+- `FilesystemMiddleware` — JSON files on disk (in `CHAN_MASTER_OUT_DIR` or `./out/`)
 - `CompositeBackend` — reads check cache first, falls back to disk
 
 ## Project structure
@@ -119,9 +119,9 @@ chan-master/
 ├── __init__.py          # Package exports
 ├── __main__.py          # python -m entry
 ├── cli.py               # CLI: topic selection, main loop
-├── tutor.py             # SocraticTutor engine
-├── memory.py            # deep-agents-memory pattern + SessionStore
-├── models.py            # Data models (Question, TutorTurn, SessionState)
+├── chan_master.py       # ChanMaster engine
+├── memory.py            # CompositeBackend persistence + SessionStore
+├── models.py            # Data models (Question, ChanTurn, SessionState)
 ├── prompts.py           # LLM system prompts (Little Schemer style)
 ├── requirements.txt
 ├── README.md

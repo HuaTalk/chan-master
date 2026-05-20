@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke test — runs the full tutoring pipeline against the real LLM.
+"""Smoke test: runs the full Chan Master pipeline against the real LLM.
 
 Tests: model init, question generation, answer evaluation, session
 persistence, mastery heuristics, report card, and CLI argument parsing.
@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-from tutor import SocraticTutor, _mastery_level, _default_model
+from chan_master import ChanMaster, _mastery_level, _default_model
 from memory import SessionStore
 from models import (
     AnswerRecord,
@@ -117,7 +117,7 @@ def _load_smoke_env() -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
-# Tests using the real DeepSeek V4 Pro model
+# Tests using the configured real LLM
 # ---------------------------------------------------------------------------
 
 async def test_model_init():
@@ -129,9 +129,9 @@ async def test_model_init():
 
 
 async def test_question_generation():
-    """Verify the tutor generates a parseable question from the real LLM."""
-    tutor = SocraticTutor(topic="binary search")
-    turn = await tutor.start()
+    """Verify Chan Master generates a parseable question from the real LLM."""
+    chan = ChanMaster(topic="binary search")
+    turn = await chan.start()
 
     assert turn.question is not None, "No question generated"
     assert len(turn.question.options) >= 2, f"Too few options ({len(turn.question.options)})"
@@ -145,13 +145,13 @@ async def test_question_generation():
 
 async def test_correct_answer_cycle():
     """One full correct answer cycle: question → answer → feedback → next question."""
-    tutor = SocraticTutor(topic="binary search")
-    turn1 = await tutor.start()
+    chan = ChanMaster(topic="binary search")
+    turn1 = await chan.start()
     assert turn1.question is not None
 
     # Answer correctly
     correct = list(turn1.question.correct_keys)
-    turn2 = await tutor.answer(correct)
+    turn2 = await chan.answer(correct)
 
     assert turn2.feedback is not None, "No feedback received"
     assert turn2.is_correct is True, f"Expected correct, got is_correct={turn2.is_correct}"
@@ -159,13 +159,13 @@ async def test_correct_answer_cycle():
 
     print(f"  ✅ test_correct_answer_cycle")
     print(f"     Feedback: {turn2.feedback[:80]}…")
-    print(f"     Mastery: {tutor.mastery[0].value}")
+    print(f"     Mastery: {chan.mastery[0].value}")
 
 
 async def test_wrong_answer_cycle():
     """Answer wrong → feedback + still continues."""
-    tutor = SocraticTutor(topic="binary search")
-    turn1 = await tutor.start()
+    chan = ChanMaster(topic="binary search")
+    turn1 = await chan.start()
     assert turn1.question is not None
 
     # Pick the first *wrong* answer
@@ -174,13 +174,13 @@ async def test_wrong_answer_cycle():
     assert wrong_keys, "No wrong option to pick (all options correct)"
     wrong_key = wrong_keys[0]
 
-    turn2 = await tutor.answer([wrong_key])
+    turn2 = await chan.answer([wrong_key])
 
     assert turn2.feedback is not None, "No feedback on wrong answer"
     assert turn2.is_correct is False, f"Expected wrong, got is_correct={turn2.is_correct}"
     assert not turn2.session_complete, "Session ended on first wrong answer"
-    assert tutor.session.correct_count == 0
-    assert tutor.session.total_questions == 1
+    assert chan.session.correct_count == 0
+    assert chan.session.total_questions == 1
 
     print(f"  ✅ test_wrong_answer_cycle")
     print(f"     Feedback: {turn2.feedback[:80]}…")
@@ -188,7 +188,7 @@ async def test_wrong_answer_cycle():
 
 async def test_session_persistence():
     """Verify session save/load round-trip (no LLM needed)."""
-    store = SessionStore(out_dir="/tmp/pt-smoke-real")
+    store = SessionStore(out_dir="/tmp/chan-master-smoke-real")
     s = await store.new_session("binary search")
     s.total_questions = 5
     s.correct_count = 4
@@ -206,32 +206,32 @@ async def test_session_persistence():
     assert loaded.answers[0].is_correct is True
 
     import shutil
-    shutil.rmtree("/tmp/pt-smoke-real", ignore_errors=True)
+    shutil.rmtree("/tmp/chan-master-smoke-real", ignore_errors=True)
     print("  ✅ test_session_persistence")
 
 
 async def test_buffered_answer_cycle():
     """Buffered mode answers immediately from pre-generated questions."""
-    tutor = SocraticTutor(
+    chan = ChanMaster(
         topic="binary search",
         model=FakeBufferModel(),
-        store=SessionStore(out_dir="/tmp/pt-smoke-buffer"),
+        store=SessionStore(out_dir="/tmp/chan-master-smoke-buffer"),
         buffer_question_num=3,
         buffer_refresh_percent=0,
     )
-    turn1 = await tutor.start()
+    turn1 = await chan.start()
     assert turn1.question is not None
-    assert len(tutor._question_buffer) == 2
+    assert len(chan._question_buffer) == 2
 
-    turn2 = await tutor.answer(list(turn1.question.correct_keys))
+    turn2 = await chan.answer(list(turn1.question.correct_keys))
     assert turn2.feedback is not None
     assert turn2.is_correct is True
     assert turn2.question is not None
-    assert tutor.session.total_questions == 1
-    assert tutor.session.answers[-1].feedback == turn2.feedback
+    assert chan.session.total_questions == 1
+    assert chan.session.answers[-1].feedback == turn2.feedback
 
     import shutil
-    shutil.rmtree("/tmp/pt-smoke-buffer", ignore_errors=True)
+    shutil.rmtree("/tmp/chan-master-smoke-buffer", ignore_errors=True)
     print("  ✅ test_buffered_answer_cycle")
 
 
@@ -268,12 +268,12 @@ def test_topic_selection():
 
 async def test_report_card():
     """Verify report card generation from real LLM."""
-    tutor = SocraticTutor(topic="binary search")
+    chan = ChanMaster(topic="binary search")
     # Simulate some history
-    turn = await tutor.start()
-    await tutor.answer(list(turn.question.correct_keys))
+    turn = await chan.start()
+    await chan.answer(list(turn.question.correct_keys))
 
-    report = await tutor.generate_report_card()
+    report = await chan.generate_report_card()
     assert report is not None
     assert len(report) > 20
 
@@ -283,7 +283,7 @@ async def test_report_card():
 
 async def main():
     print("=" * 56)
-    print("  Smoke Tests: practice_test_agent (REAL LLM)")
+    print("  Smoke Tests: chan-master (REAL LLM)")
     print("=" * 56)
     print()
 
