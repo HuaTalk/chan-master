@@ -10,6 +10,7 @@ import asyncio
 import json
 import os
 import re
+from collections.abc import Iterable
 from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
@@ -29,7 +30,7 @@ from prompts import (
     SYSTEM_PROMPT,
 )
 
-_JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 
 _MAX_TURNS = 30  # safety limit — force-complete after this many turns
 
@@ -331,7 +332,7 @@ class ChanMaster:
         response = await self.model.ainvoke([SystemMessage(content=prompt)])
         content = response.content if hasattr(response, "content") else str(response)
         raw = self._extract_json(content)
-        questions = [self._parse_question(q) for q in raw.get("questions", [])]
+        questions = [self._parse_question(q) for q in self._coerce_list(raw.get("questions", []))]
         if not questions:
             raise ValueError(f"LLM output did not contain buffered questions:\n{content[:500]}")
         return questions[:count]
@@ -356,11 +357,22 @@ class ChanMaster:
 
     def _parse_question(self, raw: dict) -> Question:
         """Parse a dict into a ``Question``."""
-        options = [Option(**o) for o in raw.get("options", [])]
+        if not isinstance(raw, dict):
+            raise ValueError(f"Question must be a JSON object, got {type(raw).__name__}")
+
+        options = []
+        for option in self._coerce_list(raw.get("options", [])):
+            if isinstance(option, str):
+                option = self._coerce_json_string(option)
+            if not isinstance(option, dict):
+                raise ValueError(f"Question option must be a JSON object, got {type(option).__name__}")
+            options.append(Option(**option))
+
+        correct_keys = self._coerce_list(raw.get("correct_keys", []))
         return Question(
             stem=raw["stem"],
             options=options,
-            correct_keys=list(raw.get("correct_keys", [])),
+            correct_keys=[str(key).strip() for key in correct_keys if str(key).strip()],
         )
 
     def _buffer_feedback(self, question: Question, chosen_keys: list[str], is_correct: bool) -> str:
@@ -384,12 +396,61 @@ class ChanMaster:
         return mastery_level == MasteryLevel.MASTERED or self.session.turn_count >= _MAX_TURNS
 
     def _extract_json(self, text: str) -> dict:
-        """Extract the first JSON object from *text*."""
-        match = _JSON_RE.search(text)
-        if not match:
-            msg = f"LLM output did not contain JSON:\n{text[:500]}"
-            raise ValueError(msg)
-        return json.loads(match.group())
+        """Extract the first valid JSON object from *text*."""
+        decoder = json.JSONDecoder()
+        stripped = text.strip()
+        candidates = [stripped]
+        candidates.extend(match.group(1).strip() for match in _JSON_FENCE_RE.finditer(text))
+
+        for candidate in candidates:
+            try:
+                raw = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(raw, dict):
+                return raw
+
+        for index, char in enumerate(text):
+            if char != "{":
+                continue
+            try:
+                raw, _ = decoder.raw_decode(text[index:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(raw, dict):
+                return raw
+
+        msg = f"LLM output did not contain valid JSON:\n{text[:500]}"
+        raise ValueError(msg)
+
+    def _coerce_json_string(self, value: str):
+        """Decode a stringified JSON value when an LLM double-encodes it."""
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+
+    def _coerce_list(self, value) -> list:
+        """Normalize common LLM mistakes where arrays are returned as strings."""
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            parsed = self._coerce_json_string(stripped)
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, tuple):
+                return list(parsed)
+            if "," in stripped:
+                return [item.strip() for item in stripped.split(",") if item.strip()]
+            return [stripped]
+        if isinstance(value, Iterable) and not isinstance(value, (dict, bytes)):
+            return list(value)
+        return [value]
 
     def _parse_turn(self, raw: dict) -> ChanTurn:
         """Parse a dict into a ``ChanTurn``."""

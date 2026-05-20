@@ -72,6 +72,33 @@ class FakeBufferModel:
         """
 
 
+class FakeMalformedJsonModel:
+    """Model stub for common LLM JSON formatting mistakes."""
+
+    async def ainvoke(self, _messages: list[Any]):
+        return type("Resp", (), {"content": self._content()})()
+
+    def _content(self) -> str:
+        return r"""
+        Here is the next turn:
+        {not valid json}
+        ```json
+        {
+          "question": {
+            "stem": "In [2, 5, 8], which value is at index 1?",
+            "options": "[{\"key\":\"A\",\"text\":\"2\"},{\"key\":\"B\",\"text\":\"5\"},{\"key\":\"C\",\"text\":\"8\"}]",
+            "correct_keys": "B"
+          },
+          "feedback": null,
+          "is_correct": null,
+          "session_complete": false,
+          "summary": null
+        }
+        ```
+        {"ignored": true}
+        """
+
+
 def _resolve_env_file() -> Path:
     """Resolve the env file path used for real-LLM smoke testing.
 
@@ -238,6 +265,25 @@ async def test_buffered_answer_cycle():
     print("  ✅ test_buffered_answer_cycle")
 
 
+async def test_malformed_json_recovery():
+    """Recover from fenced JSON and DeepSeek-style stringified arrays."""
+    chan = ChanMaster(
+        topic="binary search",
+        model=FakeMalformedJsonModel(),
+        store=SessionStore(out_dir="/tmp/chan-master-smoke-malformed"),
+    )
+    turn = await chan.start()
+
+    assert turn.question is not None
+    assert len(turn.question.options) == 3
+    assert turn.question.options[1].key == "B"
+    assert turn.question.correct_keys == ["B"]
+
+    import shutil
+    shutil.rmtree("/tmp/chan-master-smoke-malformed", ignore_errors=True)
+    print("  ✅ test_malformed_json_recovery")
+
+
 async def test_mastery_heuristics():
     """Verify mastery level progression (no LLM needed)."""
     s0 = SessionState(session_id="t", topic="t")
@@ -293,6 +339,7 @@ async def main():
     test_topic_selection()
     await test_session_persistence()
     await test_buffered_answer_cycle()
+    await test_malformed_json_recovery()
     await test_mastery_heuristics()
 
     ok_env, env_msg = _load_smoke_env()
