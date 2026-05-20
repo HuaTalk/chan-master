@@ -7,10 +7,7 @@ Run with real API credentials from .env or INTEGRATION_ENV_FILE.
 
 import asyncio
 import os
-import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dotenv import load_dotenv
 

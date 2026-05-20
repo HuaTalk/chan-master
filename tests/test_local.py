@@ -4,9 +4,9 @@ from typing import Any
 import pytest
 
 from chan_master import ChanMaster, _mastery_level, _message_text
-from cli import _select_topic
-from memory import SessionStore
-from models import AnswerRecord, MasteryLevel, SessionState
+from chan_master.cli import _select_topic
+from chan_master.memory import SessionStore
+from chan_master.models import AnswerRecord, MasteryLevel, SessionState
 
 
 class FakeTurnModel:

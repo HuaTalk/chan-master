@@ -5,8 +5,8 @@ for session persistence, with an LLM-powered guide that generates adaptive
 multiple-choice questions and provides targeted feedback.
 """
 
-from chan_master import ChanMaster
-from models import (
+from .chan_master import ChanMaster, _default_model, _mastery_level, _message_text
+from .models import (
     ChanTurn,
     Option,
     Question,
@@ -16,6 +16,9 @@ from models import (
 
 __all__ = [
     "ChanMaster",
+    "_default_model",
+    "_mastery_level",
+    "_message_text",
     "ChanTurn",
     "Option",
     "Question",

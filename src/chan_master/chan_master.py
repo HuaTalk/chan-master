@@ -17,9 +17,9 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from memory import SessionState, SessionStore
-from models import AnswerRecord, ChanTurn, MasteryLevel, Option, Question
-from prompts import (
+from .memory import SessionState, SessionStore
+from .models import AnswerRecord, ChanTurn, MasteryLevel, Option, Question
+from .prompts import (
     BUFFER_FEEDBACK_CORRECT,
     BUFFER_FEEDBACK_INCORRECT,
     BUFFER_QUESTIONS_PROMPT,

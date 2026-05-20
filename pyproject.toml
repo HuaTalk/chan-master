@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chan-master"
+version = "0.1.0"
+description = "AI-powered Socratic practice in the style of The Little Schemer."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain>=0.3",
+    "langchain-openai>=0.3",
+    "openai>=1.70",
+    "python-dotenv>=1.1",
+]
+
+[project.scripts]
+chan-master = "chan_master.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

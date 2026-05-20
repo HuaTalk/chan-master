@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Convenience entry point: run ``python main.py`` from this project."""
+"""Compatibility wrapper for running ``python main.py`` from a checkout."""
 
-import sys
-from pathlib import Path
+try:
+    from chan_master.cli import main
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
 
-# Add the parent of this package to sys.path so the package is importable.
-_parent = Path(__file__).resolve().parent.parent
-if str(_parent) not in sys.path:
-    sys.path.insert(0, str(_parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+    from chan_master.cli import main
 
-from cli import main
 
-main()
+if __name__ == "__main__":
+    main()

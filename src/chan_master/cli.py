@@ -2,9 +2,9 @@
 
 Usage
 -----
-    python __main__.py
-    python __main__.py --topic "binary search"
-    python __main__.py --resume          # pick from recent sessions
+    chan-master
+    chan-master --topic "binary search"
+    chan-master --resume          # pick from recent sessions
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-from memory import SessionStore
-from chan_master import ChanMaster, preflight_llm
+from .chan_master import ChanMaster, preflight_llm
+from .memory import SessionStore
 
 # ---------------------------------------------------------------------------
 # Rich terminal helpers (zero-dependency ANSI subset)

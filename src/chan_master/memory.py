@@ -14,13 +14,13 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from models import AnswerRecord, SessionState
+from .models import AnswerRecord, SessionState
 
 # ---------------------------------------------------------------------------
 # Local CompositeBackend implementation
 # ---------------------------------------------------------------------------
 
-DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "out"
+DEFAULT_OUT_DIR = Path("out")
 
 
 class StateBackend:

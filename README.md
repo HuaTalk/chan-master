@@ -20,11 +20,10 @@ Chan Master follows the same approach:
 ```bash
 cd chan-master
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 cp .env.example .env  # set DEEPSEEK_API_KEY or OPENAI_API_KEY
 
-# Run from project directory
-python __main__.py
+chan-master
 ```
 
 ## Usage
@@ -32,7 +31,9 @@ python __main__.py
 ### Interactive session
 
 ```bash
-python __main__.py       # from inside chan-master/
+chan-master
+# or:
+python -m chan_master
 ```
 
 CLI 会在进入练习前自动探测一次 LLM 可用性；若 API Key / base URL / model 配置有误，会直接提示并退出。
@@ -40,14 +41,14 @@ CLI 会在进入练习前自动探测一次 LLM 可用性；若 API Key / base U
 ### Topic directly
 
 ```bash
-python __main__.py --topic "binary search"
+chan-master --topic "binary search"
 ```
 
 ### Question buffer
 
 ```bash
-python __main__.py --topic "binary search" --buffer-question-num 5
-python __main__.py --topic "binary search" --buffer-question-num 5 --buffer-refresh-percent 70
+chan-master --topic "binary search" --buffer-question-num 5
+chan-master --topic "binary search" --buffer-question-num 5 --buffer-refresh-percent 70
 ```
 
 `--buffer-question-num` enables pre-generated questions so the next question can appear immediately after an answer. `--buffer-refresh-percent` defaults to `70`, meaning Chan Master starts replenishing the buffer once the remaining buffered questions are at or below 70% of the configured buffer size.
@@ -55,13 +56,13 @@ python __main__.py --topic "binary search" --buffer-question-num 5 --buffer-refr
 ### Resume an incomplete session
 
 ```bash
-python __main__.py --resume
+chan-master --resume
 ```
 
 ### List past sessions
 
 ```bash
-python __main__.py --list-sessions
+chan-master --list-sessions
 ```
 
 ### Environment variables
@@ -132,13 +133,20 @@ Sessions are persisted using the **CompositeBackend** pattern:
 
 ```
 chan-master/
-├── __init__.py          # Package exports
-├── __main__.py          # python -m entry
-├── cli.py               # CLI: topic selection, main loop
-├── chan_master.py       # ChanMaster engine
-├── memory.py            # CompositeBackend persistence + SessionStore
-├── models.py            # Data models (Question, ChanTurn, SessionState)
-├── prompts.py           # LLM system prompts (Little Schemer style)
+├── pyproject.toml       # Package metadata and console script
+├── __main__.py          # Source-checkout compatibility wrapper
+├── main.py              # Source-checkout compatibility wrapper
+├── src/
+│   └── chan_master/
+│       ├── __init__.py      # Package exports
+│       ├── __main__.py      # python -m chan_master entry
+│       ├── cli.py           # CLI: topic selection, main loop
+│       ├── chan_master.py   # ChanMaster engine
+│       ├── memory.py        # CompositeBackend persistence + SessionStore
+│       ├── models.py        # Data models (Question, ChanTurn, SessionState)
+│       └── prompts.py       # LLM system prompts (Little Schemer style)
+├── _integration_test.py
+├── tests/
 ├── requirements.txt
 ├── README.md
 ├── AGENTS.md
@@ -175,7 +183,7 @@ Chan Master 是一个小而美的 CLI-agent 应用。它的目标不是做一个
 ```bash
 cd chan-master
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 cp .env.example .env
 ```
 
@@ -190,16 +198,16 @@ OPENAI_API_KEY=your_key_here
 启动应用：
 
 ```bash
-python __main__.py
+chan-master
 ```
 
 常用命令：
 
 ```bash
-python __main__.py --topic "binary search"
-python __main__.py --resume
-python __main__.py --list-sessions
-python __main__.py --topic "binary search" --buffer-question-num 5
+chan-master --topic "binary search"
+chan-master --resume
+chan-master --list-sessions
+chan-master --topic "binary search" --buffer-question-num 5
 ```
 
 ### 设计原则
@@ -214,11 +222,11 @@ python __main__.py --topic "binary search" --buffer-question-num 5
 
 | 层 | 文件 | 作用 |
 |---|---|---|
-| Models | `models.py` | `Question`、`ChanTurn`、`SessionState` 等数据结构 |
-| Prompts | `prompts.py` | Little Schemer 风格 system prompt 和辅助 prompt |
-| Memory | `memory.py` | `CompositeBackend`、本地 JSON 持久化、`SessionStore` |
-| Engine | `chan_master.py` | LLM 调用、答案评估、buffer、mastery heuristic |
-| CLI | `cli.py` | 参数解析、选题、恢复 session、交互循环 |
+| Models | `src/chan_master/models.py` | `Question`、`ChanTurn`、`SessionState` 等数据结构 |
+| Prompts | `src/chan_master/prompts.py` | Little Schemer 风格 system prompt 和辅助 prompt |
+| Memory | `src/chan_master/memory.py` | `CompositeBackend`、本地 JSON 持久化、`SessionStore` |
+| Engine | `src/chan_master/chan_master.py` | LLM 调用、答案评估、buffer、mastery heuristic |
+| CLI | `src/chan_master/cli.py` | 参数解析、选题、恢复 session、交互循环 |
 
 ### 工作流程
 
