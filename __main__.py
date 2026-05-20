@@ -1,4 +1,4 @@
-"""Entry point — run via ``python __main__.py`` from the project directory."""
+"""Run Chan Master from this project directory."""
 
 import sys
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Memory persistence for tutoring sessions using the CompositeBackend pattern.
+"""Memory persistence for Chan Master sessions using the CompositeBackend pattern.
 
   - ``StateBackend`` — ephemeral, in-memory store (per-process cache).
   - ``FilesystemMiddleware`` — JSON-file persistence on disk.
@@ -17,7 +17,7 @@ from typing import Any, Optional
 from models import AnswerRecord, SessionState
 
 # ---------------------------------------------------------------------------
-# Pure-Python fallback implementing the deep-agents-memory protocol
+# Local CompositeBackend implementation
 # ---------------------------------------------------------------------------
 
 DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "out"
@@ -110,20 +110,20 @@ class CompositeBackend:
         return await self._tier2.list_keys()
 
 
-# ---------------------------------------------------------------------------
-# High-level session store used by the tutor
+# High-level session store used by Chan Master
 # ---------------------------------------------------------------------------
 
 
 class SessionStore:
-    """Persist and resume tutoring sessions.
+    """Persist and resume Chan Master sessions.
 
-    Uses the deep-agents ``CompositeBackend`` pattern internally.
+    Uses the local ``CompositeBackend`` pattern internally.
     """
 
     def __init__(self, out_dir: str | os.PathLike | None = None) -> None:
-        resolved = out_dir or os.getenv("PRACTICE_OUT_DIR")
-        self._out_dir = Path(resolved) if resolved else DEFAULT_OUT_DIR
+        configured_out_dir = os.getenv("CHAN_MASTER_OUT_DIR", "").strip()
+        resolved_out_dir = out_dir or configured_out_dir
+        self._out_dir = Path(resolved_out_dir) if resolved_out_dir else DEFAULT_OUT_DIR
         self._out_dir.mkdir(parents=True, exist_ok=True)
 
         fs = FilesystemMiddleware(self._out_dir)
