@@ -6,3 +6,9 @@ __pycache__/
 !.env.example
 out/
 .DS_Store
+
+# Agent tooling session state
+.claude/
+
+# parallel-code worktree isolation
+.worktrees/
