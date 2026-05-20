@@ -29,11 +29,12 @@ This project implements Chan Master, a Socratic practice guide in the style of
 
 ## Testing
 
-- **Integration smoke test** — run `python _smoke_test.py`.
-- The smoke test resolves env config from `SMOKE_ENV_FILE`, then project-local
-  `./.env`, then parent `../.env`.
+- **Local unit tests** — run `python -m pytest`.
+- **Integration test** — run `python _integration_test.py`.
+- The integration test resolves env config from `INTEGRATION_ENV_FILE`, then
+  project-local `./.env`, then parent `../.env`.
 - The resolved `.env` is loaded with override enabled, so real-LLM integration
   checks use the current `.env` values rather than inherited shell variables.
-- **Feature completion** — after implementing any feature, run the integration
-  smoke test with the current `.env`; if it passes, automatically create a git
-  commit for the completed change.
+- **Feature completion** — after implementing any feature, run the local unit
+  tests and the integration test with the current `.env`; if both pass,
+  automatically create a git commit for the completed change.

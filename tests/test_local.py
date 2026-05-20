@@ -94,6 +94,33 @@ class FakeBufferModel:
         """
 
 
+class FakeMalformedJsonModel:
+    """Async chat model stub for common LLM JSON formatting mistakes."""
+
+    async def ainvoke(self, _messages: list[Any]):
+        return type("Resp", (), {"content": self._content()})()
+
+    def _content(self) -> str:
+        return r"""
+        Here is the next turn:
+        {not valid json}
+        ```json
+        {
+          "question": {
+            "stem": "In [2, 5, 8], which value is at index 1?",
+            "options": "[{\"key\":\"A\",\"text\":\"2\"},{\"key\":\"B\",\"text\":\"5\"},{\"key\":\"C\",\"text\":\"8\"}]",
+            "correct_keys": "B"
+          },
+          "feedback": null,
+          "is_correct": null,
+          "session_complete": false,
+          "summary": null
+        }
+        ```
+        {"ignored": true}
+        """
+
+
 def run(coro):
     return asyncio.run(coro)
 
@@ -102,6 +129,7 @@ def test_topic_selection_aliases_and_custom_topic():
     assert _select_topic("binary search") == "binary-search"
     assert _select_topic("Binary Search") == "binary-search"
     assert _select_topic("langgraph") == "langgraph"
+    assert _select_topic("recursion") == "recursion"
     assert _select_topic("custom stuff") == "custom stuff"
 
 
@@ -134,15 +162,33 @@ def test_session_store_round_trip(tmp_path):
     async def scenario():
         store = SessionStore(out_dir=tmp_path)
         state = await store.new_session("binary search")
-        state.total_questions = 1
-        state.correct_count = 1
+        state.total_questions = 5
+        state.correct_count = 4
         state.answers.append(
             AnswerRecord(
-                stem="Q?",
+                stem="Q1?",
                 chosen_keys=["B"],
                 correct_keys=["B"],
                 is_correct=True,
                 feedback="Good.",
+            )
+        )
+        state.answers.append(
+            AnswerRecord(
+                stem="Q2?",
+                chosen_keys=["A"],
+                correct_keys=["B"],
+                is_correct=False,
+                feedback="Nope.",
+            )
+        )
+        state.answers.append(
+            AnswerRecord(
+                stem="Q3?",
+                chosen_keys=["B"],
+                correct_keys=["B"],
+                is_correct=True,
+                feedback="Ok.",
             )
         )
         await store.save(state)
@@ -150,8 +196,10 @@ def test_session_store_round_trip(tmp_path):
         loaded = await store.load(state.session_id)
         assert loaded is not None
         assert loaded.topic == "binary search"
-        assert loaded.total_questions == 1
-        assert loaded.correct_count == 1
+        assert loaded.total_questions == 5
+        assert loaded.correct_count == 4
+        assert len(loaded.answers) == 3
+        assert loaded.answers[0].is_correct is True
         assert loaded.answers[0].feedback == "Good."
 
     run(scenario())
@@ -201,6 +249,23 @@ def test_buffered_answer_cycle_is_local_after_generation(tmp_path):
         assert "5 is the answer" in next_turn.feedback
         assert next_turn.question is not None
         assert chan.session.answers[-1].feedback == next_turn.feedback
+
+    run(scenario())
+
+
+def test_malformed_json_recovery_uses_first_valid_turn(tmp_path):
+    async def scenario():
+        chan = ChanMaster(
+            topic="binary search",
+            model=FakeMalformedJsonModel(),
+            store=SessionStore(out_dir=tmp_path),
+        )
+        turn = await chan.start()
+
+        assert turn.question is not None
+        assert len(turn.question.options) == 3
+        assert turn.question.options[1].key == "B"
+        assert turn.question.correct_keys == ["B"]
 
     run(scenario())
 
