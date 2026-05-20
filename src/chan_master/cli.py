@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -31,6 +32,29 @@ _STYLE = {
     "magenta": "\033[95m",
     "reset": "\033[0m",
 }
+
+DEFAULT_BUFFER_QUESTION_NUM = 5
+DEFAULT_BUFFER_REFRESH_PERCENT = 70
+
+
+def _env_int(name: str, default: int) -> int:
+    """Read an integer env var, falling back to a known-good default."""
+    value = os.getenv(name, "").strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def _default_buffer_question_num() -> int:
+    return max(0, _env_int("CHAN_MASTER_BUFFER_QUESTION_NUM", DEFAULT_BUFFER_QUESTION_NUM))
+
+
+def _default_buffer_refresh_percent() -> int:
+    value = _env_int("CHAN_MASTER_BUFFER_REFRESH_PERCENT", DEFAULT_BUFFER_REFRESH_PERCENT)
+    return min(100, max(0, value))
 
 
 def _p(text: str, *styles: str) -> str:
@@ -194,8 +218,8 @@ def _select_resume_session(store: SessionStore) -> str | None:
 async def _run_session(
     topic: str,
     resume_session_id: str | None = None,
-    buffer_question_num: int = 0,
-    buffer_refresh_percent: int = 70,
+    buffer_question_num: int = DEFAULT_BUFFER_QUESTION_NUM,
+    buffer_refresh_percent: int = DEFAULT_BUFFER_REFRESH_PERCENT,
 ) -> None:
     """Run the practice session loop."""
     store = SessionStore()
@@ -278,14 +302,21 @@ def main() -> None:
     parser.add_argument(
         "--buffer-question-num",
         type=int,
-        default=0,
-        help="Pre-generate this many questions to reduce wait time (0 disables buffering)",
+        default=_default_buffer_question_num(),
+        help=(
+            "Pre-generate this many questions to reduce wait time "
+            f"(default: {DEFAULT_BUFFER_QUESTION_NUM}; 0 disables buffering; "
+            "env: CHAN_MASTER_BUFFER_QUESTION_NUM)"
+        ),
     )
     parser.add_argument(
         "--buffer-refresh-percent",
         type=int,
-        default=70,
-        help="Refresh buffer when remaining questions are at or below this percentage",
+        default=_default_buffer_refresh_percent(),
+        help=(
+            "Refresh buffer when remaining questions are at or below this percentage "
+            f"(default: {DEFAULT_BUFFER_REFRESH_PERCENT}; env: CHAN_MASTER_BUFFER_REFRESH_PERCENT)"
+        ),
     )
     args = parser.parse_args()
 

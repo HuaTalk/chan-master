@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from chan_master import ChanMaster, _mastery_level, _message_text
-from chan_master.cli import _select_topic
+from chan_master.cli import _default_buffer_question_num, _default_buffer_refresh_percent, _select_topic
 from chan_master.memory import SessionStore
 from chan_master.models import AnswerRecord, MasteryLevel, SessionState
 
@@ -261,6 +261,22 @@ def test_buffered_answer_cycle_is_local_after_generation(tmp_path):
         assert chan.session.answers[-1].feedback == next_turn.feedback
 
     run(scenario())
+
+
+def test_buffer_defaults_enable_buffering(monkeypatch):
+    monkeypatch.delenv("CHAN_MASTER_BUFFER_QUESTION_NUM", raising=False)
+    monkeypatch.delenv("CHAN_MASTER_BUFFER_REFRESH_PERCENT", raising=False)
+
+    assert _default_buffer_question_num() == 5
+    assert _default_buffer_refresh_percent() == 70
+
+
+def test_buffer_defaults_can_be_configured(monkeypatch):
+    monkeypatch.setenv("CHAN_MASTER_BUFFER_QUESTION_NUM", "0")
+    monkeypatch.setenv("CHAN_MASTER_BUFFER_REFRESH_PERCENT", "90")
+
+    assert _default_buffer_question_num() == 0
+    assert _default_buffer_refresh_percent() == 90
 
 
 def test_malformed_json_recovery_uses_first_valid_turn(tmp_path):

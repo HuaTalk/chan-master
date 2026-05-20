@@ -49,8 +49,10 @@ chan-master
 chan-master --topic "binary search"
 chan-master --resume
 chan-master --list-sessions
-chan-master --topic "binary search" --buffer-question-num 5
+chan-master --topic "binary search" --buffer-question-num 0
 ```
+
+默认开启题目 buffer，并预生成 5 个问题。需要关闭时使用 `--buffer-question-num 0`，也可以在 `.env` 中设置 `CHAN_MASTER_BUFFER_QUESTION_NUM` 和 `CHAN_MASTER_BUFFER_REFRESH_PERCENT` 调整默认值。
 
 答题时输入选项即可，例如：
 

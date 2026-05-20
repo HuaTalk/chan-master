@@ -49,11 +49,14 @@ chan-master --topic "binary search"
 ### Question buffer
 
 ```bash
-chan-master --topic "binary search" --buffer-question-num 5
-chan-master --topic "binary search" --buffer-question-num 5 --buffer-refresh-percent 70
+chan-master --topic "binary search"
+chan-master --topic "binary search" --buffer-question-num 0
+chan-master --topic "binary search" --buffer-question-num 8 --buffer-refresh-percent 70
 ```
 
-`--buffer-question-num` enables pre-generated questions so the next question can appear immediately after an answer. `--buffer-refresh-percent` defaults to `70`, meaning Chan Master starts replenishing the buffer once the remaining buffered questions are at or below 70% of the configured buffer size.
+The question buffer is enabled by default with 5 pre-generated questions, so the next question can appear immediately after an answer. Use `--buffer-question-num 0` to disable buffering. You can also configure the defaults with `CHAN_MASTER_BUFFER_QUESTION_NUM` and `CHAN_MASTER_BUFFER_REFRESH_PERCENT` in `.env`.
+
+`--buffer-refresh-percent` defaults to `70`, meaning Chan Master starts replenishing the buffer once the remaining buffered questions are at or below 70% of the configured buffer size.
 
 ### Resume an incomplete session
 
