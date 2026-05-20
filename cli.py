@@ -2,9 +2,9 @@
 
 Usage
 -----
-    python -m practice_test_agent
-    python -m practice_test_agent --topic "binary search"
-    python -m practice_test_agent --resume          # pick from recent sessions
+    python __main__.py
+    python __main__.py --topic "binary search"
+    python __main__.py --resume          # pick from recent sessions
 """
 
 from __future__ import annotations

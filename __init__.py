@@ -1,6 +1,6 @@
-"""Practice Test Agent — AI-guided Socratic testing in the style of 'The Little Schemer'.
+"""Chan Master — AI-guided Socratic testing in the style of 'The Little Schemer'.
 
-Uses deep-agents-memory pattern (StateBackend / StoreBackend / FilesystemMiddleware)
+Uses the CompositeBackend pattern (StateBackend + FilesystemMiddleware)
 for session persistence, with an LLM-powered tutor that generates adaptive
 multiple-choice questions and provides targeted feedback.
 """

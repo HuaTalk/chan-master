@@ -1,4 +1,4 @@
-"""Allow ``python -m practice_test_agent`` from any working directory."""
+"""Entry point — run via ``python __main__.py`` from the project directory."""
 
 import sys
 from pathlib import Path

@@ -23,19 +23,9 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # set DEEPSEEK_API_KEY or OPENAI_API_KEY
 
-# Run from inside package directory (recommended)
+# Run from project directory
 python __main__.py
-# or
-python main.py
 ```
-
-> **Note:** `python -m practice_test_agent` requires the parent directory
-> (`llm-memory-playground/`) to be on ``sys.path`` — run it from *outside* the
-> package directory:
-> ```bash
-> cd ..
-> python -m practice_test_agent
-> ```
 
 ## Usage
 
@@ -116,14 +106,11 @@ The tutor tracks your accuracy and recent streak:
 
 ## Memory
 
-Sessions are persisted using the **deep-agents-memory** pattern:
+Sessions are persisted using the **CompositeBackend** pattern:
 
 - `StateBackend` — in-memory cache (per-process)
-- `FilesystemMiddleware` — JSON files on disk (`./out/`)
+- `FilesystemMiddleware` — JSON files on disk (in `PRACTICE_OUT_DIR` or `./out/`)
 - `CompositeBackend` — reads check cache first, falls back to disk
-
-If `deep-agents-memory` is installed, the real package is used; otherwise a
-pure-Python fallback with the same interface kicks in.
 
 ## Project structure
 

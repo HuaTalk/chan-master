@@ -1,12 +1,8 @@
-"""Memory layer — deep-agents compatible persistence for tutoring sessions.
+"""Memory persistence for tutoring sessions using the CompositeBackend pattern.
 
-Implements the *deep-agents-memory* pattern:
   - ``StateBackend`` — ephemeral, in-memory store (per-process cache).
   - ``FilesystemMiddleware`` — JSON-file persistence on disk.
-  - ``StoreBackend`` — persistent store backed by filesystem.
-
-When ``deep_agents.memory`` is importable the real package is used;
-otherwise a pure-Python fallback with the same interface is provided.
+  - ``CompositeBackend`` — two-tier cache (memory → filesystem).
 """
 
 from __future__ import annotations
@@ -115,35 +111,6 @@ class CompositeBackend:
 
 
 # ---------------------------------------------------------------------------
-# Try importing real deep_agents.memory; fall back to our implementation
-# ---------------------------------------------------------------------------
-
-try:
-    from deep_agents.memory import (  # type: ignore[no-redef, import-untyped]  # noqa: F811
-        CompositeBackend as _CompositeBackend,
-        FilesystemMiddleware as _FilesystemMiddleware,
-        StateBackend as _StateBackend,
-        StoreBackend as _StoreBackend,
-    )
-
-    _HAS_DEEP_AGENTS = True
-except ImportError:
-    _HAS_DEEP_AGENTS = False
-
-    class _StoreBackend:  # type: ignore[no-redef]
-        """Persistent store (deep-agents compat)."""
-
-        def __init__(self, middleware: FilesystemMiddleware) -> None:
-            self._middleware = middleware
-
-        async def get(self, key: str) -> Optional[Any]:
-            return await self._middleware.read(key)
-
-        async def set(self, key: str, value: Any) -> None:
-            await self._middleware.write(key, value)
-
-
-# ---------------------------------------------------------------------------
 # High-level session store used by the tutor
 # ---------------------------------------------------------------------------
 
@@ -155,14 +122,12 @@ class SessionStore:
     """
 
     def __init__(self, out_dir: str | os.PathLike | None = None) -> None:
-        self._out_dir = Path(out_dir) if out_dir else DEFAULT_OUT_DIR
+        resolved = out_dir or os.getenv("PRACTICE_OUT_DIR")
+        self._out_dir = Path(resolved) if resolved else DEFAULT_OUT_DIR
         self._out_dir.mkdir(parents=True, exist_ok=True)
 
         fs = FilesystemMiddleware(self._out_dir)
         mem = StateBackend()
-        self._store = (
-            _StoreBackend(fs) if _HAS_DEEP_AGENTS else _StoreBackend(fs)
-        )
         self._cache = CompositeBackend(mem, fs)
 
     async def new_session(self, topic: str) -> SessionState:
