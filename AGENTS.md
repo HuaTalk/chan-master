@@ -38,3 +38,7 @@ This project implements Chan Master, a Socratic practice guide in the style of
 - **Feature completion** — after implementing any feature, run the local unit
   tests and the integration test with the current `.env`; if both pass,
   automatically create a git commit for the completed change.
+- **No auto-commit without integration pass** — if the integration test fails,
+  is skipped, hangs, times out, is manually stopped, or cannot run with the
+  current `.env`, do not automatically commit. Report the verification status
+  and wait for an explicit user instruction before committing.
